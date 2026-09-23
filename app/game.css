@@ -478,6 +478,37 @@ h2,
   width: min(460px, 100%);
 }
 
+.menu-card.wide {
+  width: min(560px, 100%);
+}
+
+.about-copy {
+  margin: 16px 0 0;
+  font-size: 22px;
+  line-height: 1.35;
+  color: #f7d7b0;
+}
+
+.rules {
+  margin: 16px 0 0;
+  padding-left: 18px;
+  color: #f7d7b0;
+  line-height: 1.45;
+}
+
+.rules li {
+  margin: 10px 0;
+}
+
+.notice {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid rgba(224, 184, 90, 0.45);
+  border-radius: 12px;
+  color: #f7d7b0;
+  line-height: 1.45;
+}
+
 .menu-card h1 {
   font-size: clamp(42px, 8vw, 68px);
   line-height: 0.95;

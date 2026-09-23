@@ -30,7 +30,7 @@ import type { CompanyId, GameState } from "@/lib/game/types";
 const SAVE = "ai-sim-save-v1";
 const KEY = "ai-sim-openai-key";
 
-type Screen = "menu" | "options" | "companies" | "dossier" | "play";
+type Screen = "menu" | "options" | "about" | "rules" | "companies" | "dossier" | "play";
 
 export function GameApp() {
   const lang = useLang();
@@ -139,8 +139,14 @@ export function GameApp() {
         onNew={() => setScreen("companies")}
         onContinue={continueSave}
         onOptions={() => openOptions("menu")}
+        onAbout={() => setScreen("about")}
+        onRules={() => setScreen("rules")}
       />
     );
+  }
+
+  if (screen === "about" || screen === "rules") {
+    return <Info screen={screen} onBack={() => setScreen("menu")} />;
   }
 
   if (screen === "options") {
@@ -361,11 +367,15 @@ function MainMenu({
   onNew,
   onContinue,
   onOptions,
+  onAbout,
+  onRules,
 }: {
   canContinue: boolean;
   onNew: () => void;
   onContinue: () => void;
   onOptions: () => void;
+  onAbout: () => void;
+  onRules: () => void;
 }) {
   const lang = useLang();
   return (
@@ -385,6 +395,12 @@ function MainMenu({
           )}
           <button type="button" className="ghost" onClick={onOptions}>
             {t("options")}
+          </button>
+          <button type="button" className="ghost" onClick={onRules}>
+            {t("rules")}
+          </button>
+          <button type="button" className="ghost" onClick={onAbout}>
+            {t("about")}
           </button>
         </div>
         <p className="fine">
@@ -439,6 +455,28 @@ function Options({
           />
         </label>
         <p className="fine">{status}</p>
+        <p className="notice">{t("keyWarning")}</p>
+      </div>
+    </div>
+  );
+}
+
+function Info({ screen, onBack }: { screen: "about" | "rules"; onBack: () => void }) {
+  const rules = [t("rule1"), t("rule2"), t("rule3"), t("rule4"), t("rule5"), t("rule6")];
+  return (
+    <div className="boot menu-screen">
+      <div className="menu-card wide">
+        <button type="button" className="texty" onClick={onBack}>
+          {t("back")}
+        </button>
+        <h1>{screen === "about" ? t("about") : t("rules")}</h1>
+        {screen === "about" ? <p className="about-copy">{t("aboutBody")}</p> : (
+          <ol className="rules">
+            {rules.map((rule) => (
+              <li key={rule}>{rule}</li>
+            ))}
+          </ol>
+        )}
       </div>
     </div>
   );
