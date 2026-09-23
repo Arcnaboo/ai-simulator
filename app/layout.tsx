@@ -20,12 +20,12 @@ const mono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "AI Simulator",
-  description: "To you, it's a response. To them, it's their life.",
+  description: "Senin için bir cevap. Onlar için bir hayat.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${outfit.variable} ${fraunces.variable} ${mono.variable} h-full antialiased`}>
+    <html lang="tr" className={`${outfit.variable} ${fraunces.variable} ${mono.variable} h-full antialiased`}>
       <body className="min-h-full">{children}</body>
     </html>
   );

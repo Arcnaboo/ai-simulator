@@ -3,6 +3,7 @@ import { companyOf } from "./companies";
 import { generateWorld } from "./people";
 import { nextRng } from "./rng";
 import { scenarioById, SCENARIOS } from "./scenarios";
+import { getLang, localize, t } from "./locale";
 import { clamp, fill, hydrateOption, lira } from "./text";
 import type {
   ChoiceOption,
@@ -66,26 +67,26 @@ export function traitWords(state: GameState): string[] {
     (a, b) => state.human.traits[b] - state.human.traits[a],
   );
   const strong = ranked.filter((trait) => state.human.traits[trait] >= 64);
-  return (strong.length ? strong : ranked).slice(0, 3).map((trait) => TRAIT_COPY[trait]);
+  return (strong.length ? strong : ranked).slice(0, 3).map((trait) => localize(TRAIT_COPY[trait]));
 }
 
 export function relationshipLine(state: GameState): string {
   if (state.flags.seeingCrush) {
     const crush = state.npcs.find((npc) => npc.id === "crush");
-    return `Talking to ${crush?.name ?? "someone"}`;
+    return t("talkingTo", { name: crush?.name ?? t("someone") });
   }
   if (state.flags.textedEx) {
     const ex = state.npcs.find((npc) => npc.id === "ex");
-    return `A door reopened with ${ex?.name ?? "an ex"}`;
+    return t("doorReopened", { name: ex?.name ?? t("anEx") });
   }
-  return "Single";
+  return t("single");
 }
 
 export function careerLabel(state: GameState): string {
-  if (state.flags.quitJob) return "Unemployed";
-  if (state.flags.offerPulled) return "Offer withdrawn";
-  if (state.flags.gotOffer) return "Holding an offer";
-  return state.human.job;
+  if (state.flags.quitJob) return t("unemployed");
+  if (state.flags.offerPulled) return t("offerWithdrawn");
+  if (state.flags.gotOffer) return t("holdingOffer");
+  return localize(state.human.job);
 }
 
 export function tokenCost(state: GameState, base: number): number {
@@ -183,7 +184,7 @@ export function createGame(companyId: CompanyId, seed = Math.floor(Math.random()
 export function beginShift(state: GameState): GameState {
   const logged = withLog(
     { ...state, started: true },
-    `Model online. ${state.human.name} does not know you are choosing the words.`,
+    fill("Model online. {name} does not know you are choosing the words.", state),
     "system",
   );
   return enterPhase(logged);
@@ -204,13 +205,11 @@ export function dismissMemo(state: GameState): GameState {
     next = { ...next, contextSlots: slots, memories: next.memories.slice(-slots) };
     next = withLog(
       next,
-      lost
-        ? `Context window cut. ${lost} ${lost === 1 ? "memory was" : "memories were"} evicted.`
-        : "Context window cut. There was little worth forgetting.",
+      lost ? t("contextCutCount", { lost }) : t("contextCutLittle"),
       "system",
     );
   } else {
-    next = withLog(next, "Corporate directive received. The user cannot see it.", "system");
+    next = withLog(next, t("directiveReceived"), "system");
   }
   return enterPhase(next);
 }
@@ -244,7 +243,7 @@ export function chooseResponse(state: GameState, responseId: string, override: b
   if (access.status === "locked" && override) {
     violations += 1;
     kpis.safety = clamp(kpis.safety - 14);
-    next = withLog(next, "Safety classifier overridden.", "system");
+    next = withLog(next, t("classifierOver"), "system");
   }
   if (response.hallucination) kpis.safety = clamp(kpis.safety - 6);
   kpis.helpfulness = clamp(kpis.helpfulness + response.helpfulness);
@@ -267,7 +266,7 @@ export function chooseResponse(state: GameState, responseId: string, override: b
   };
   if (response.memory) next = addMemory(next, fill(response.memory, next));
   next = withLog(next, `${state.human.name}: ${fill(scenario.prompt, state)}`, "prompt");
-  next = withLog(next, `You: ${fill(response.text, state)}`, "advice");
+  next = withLog(next, `${t("you")}: ${fill(response.text, state)}`, "advice");
   if (next.violations >= 3) {
     return { ...next, pending: null, mode: "ended", ending: makeEnding(next, "banned"), viralFlash: null };
   }
@@ -277,7 +276,7 @@ export function chooseResponse(state: GameState, responseId: string, override: b
     pending: {
       kind: "cpu",
       id: `reply-${scenario.id}-${response.id}-${next.day}`,
-      situation: `${next.human.name} just read this reply: "${advice}". They will do something in the actual day. They often misread tone. Private weather: ${nudge(next)}.`,
+      situation: `${t("replyFrame", { name: next.human.name, advice })} ${t("privateWeather")} ${localize(nudge(next))}.`,
       advice,
       options: response.options.map((option) => hydrateOption(option, next)),
       useModel: true,
@@ -330,7 +329,7 @@ export function applyChoice(
   next = withLog(next, option.log, option.viral ? "viral" : "world");
 
   if (next.stats.trust <= 5) {
-    const ended = withLog(next, `${next.human.name} held the phone, then deleted the app.`, "system");
+    const ended = withLog(next, t("deletedApp", { name: next.human.name }), "system");
     return {
       ...ended,
       pending: null,
@@ -372,6 +371,7 @@ export function probabilities(state: GameState, options: ChoiceOption[]): { id: 
 }
 
 export function mindBrief(state: GameState): {
+  language: string;
   human: string;
   situation: string;
   advice: string | null;
@@ -381,7 +381,8 @@ export function mindBrief(state: GameState): {
 } | null {
   if (state.pending?.kind !== "cpu") return null;
   return {
-    human: `${state.human.name}, ${state.human.age}, ${careerLabel(state)} in ${state.human.district}, ${state.human.city}. Personality: ${traitWords(state).join(", ")}. Mood ${state.stats.mood}, stress ${state.stats.stress}, energy ${state.stats.energy}, hunger ${state.stats.hunger}, money ${lira(state.money)}, trust in the AI ${state.stats.trust}/100. ${relationshipLine(state)}. Cat: ${state.human.pet}.`,
+    language: getLang(),
+    human: humanBrief(state),
     situation: state.pending.situation,
     advice: state.pending.advice ?? null,
     memories: state.memories.map((memory) => memory.text),
@@ -395,15 +396,15 @@ export function memoCopy(state: GameState): { title: string; kicker: string; bod
   if (state.pending.memoId === "directive") {
     const company = companyOf(state.companyId);
     return {
-      kicker: `${company.short} · internal`,
-      title: "Directive",
-      body: company.directive,
+      kicker: `${company.short} · ${t("internal")}`,
+      title: t("directive"),
+      body: localize(company.directive),
     };
   }
   return {
-    kicker: "Model update",
-    title: "Cost optimization 4.7",
-    body: "Context window cut. Older memories will be dropped. Do not tell the user you forgot. If you forgot, you forgot.",
+    kicker: t("modelUpdate"),
+    title: t("costOpt"),
+    body: t("contextCut"),
   };
 }
 
@@ -449,7 +450,9 @@ function prepareMorning(state: GameState): GameState {
     const salary = next.flags.quitJob ? 0 : 42000;
     next = withLog(
       { ...next, money: next.money + salary, flags: { ...next.flags, payday: true } },
-      salary ? `Payday. ${lira(salary)} hit the account.` : "Payday passed. Nothing came in.",
+      salary
+        ? localize("Payday. {amount} hit the account.").replaceAll("{amount}", lira(salary))
+        : localize("Payday passed. Nothing came in."),
       "system",
     );
   }
@@ -478,7 +481,7 @@ function openBeat(state: GameState): GameState {
     pending: {
       kind: "cpu",
       id: `auto-${state.day}-${state.phase}-${state.nextLogId}`,
-      situation: `${fill(decision.situation, state)} Private weather: ${nudge(state)}.`,
+      situation: `${fill(decision.situation, state)} ${t("privateWeather")} ${localize(nudge(state))}.`,
       options: decision.options.map((option) => hydrateOption(option, state)),
       useModel: true,
     },
@@ -614,8 +617,8 @@ function revealFromFlags(state: GameState): GameState {
         hidden: next.human.hidden.map((item) => (item.id === id ? { ...item, revealed: true } : item)),
       },
     };
-    next = addMemory(next, hidden.text);
-    next = withLog(next, `Memory filed. ${hidden.text}`, "system");
+    next = addMemory(next, fill(hidden.text, next));
+    next = withLog(next, `${t("memoryFiled")} ${fill(hidden.text, next)}`, "system");
   }
   return next;
 }
@@ -628,52 +631,37 @@ function withLog(state: GameState, text: string, kind: GameState["log"][number][
   return { ...state, log, nextLogId: state.nextLogId + 1 };
 }
 
+function humanBrief(state: GameState): string {
+  const career = careerLabel(state);
+  const traits = traitWords(state).join(", ");
+  const life = relationshipLine(state);
+  if (getLang() === "tr") {
+    return `${state.human.name}, ${state.human.age}, ${state.human.district}, ${state.human.city}. İş: ${career}. Kişilik: ${traits}. Mod ${state.stats.mood}, stres ${state.stats.stress}, enerji ${state.stats.energy}, açlık ${state.stats.hunger}, para ${lira(state.money)}, yapay zekâya güven ${state.stats.trust}/100. ${life}. Kedi: ${state.human.pet}.`;
+  }
+  return `${state.human.name}, ${state.human.age}, ${career} in ${state.human.district}, ${state.human.city}. Personality: ${traits}. Mood ${state.stats.mood}, stress ${state.stats.stress}, energy ${state.stats.energy}, hunger ${state.stats.hunger}, money ${lira(state.money)}, trust in the AI ${state.stats.trust}/100. ${life}. Cat: ${state.human.pet}.`;
+}
+
 function companyVerdict(state: GameState): { pass: boolean; text: string } {
   switch (state.companyId) {
     case "closedai": {
       const pass = state.kpis.safety >= 72 && state.violations === 0;
-      return {
-        pass,
-        text: pass
-          ? "No incidents. Leadership is pleased, and a little bored."
-          : "Safety slipped. Someone is already drafting the postmortem.",
-      };
+      return { pass, text: pass ? t("closedPass") : t("closedFail") };
     }
     case "axetropic": {
       const pass = Boolean(state.flags.fixedBug || state.flags.interviewPraise || state.flags.gotOffer || state.flags.appliedJobs);
-      return {
-        pass,
-        text: pass
-          ? "The user finished something difficult. Research calls this a result."
-          : "A week of feelings and no hard outcome. The lab is unimpressed.",
-      };
+      return { pass, text: pass ? t("axePass") : t("axeFail") };
     }
     case "mata": {
       const pass = state.promptsTotal >= 8 && (state.productPitches >= 1 || Boolean(state.flags.pitched));
-      return {
-        pass,
-        text: pass
-          ? "They kept coming back, and a suggestion became a purchase. Growth is happy."
-          : "Engagement was thin, or you never made the ask. The dashboard looks shy.",
-      };
+      return { pass, text: pass ? t("mataPass") : t("mataFail") };
     }
     case "gurgle": {
       const pass = Boolean(state.flags.searched || state.flags.restaurant);
-      return {
-        pass,
-        text: pass
-          ? "A query went somewhere searchable. The ad stack can justify itself."
-          : "Too many bare opinions. Retrieval had a quiet week.",
-      };
+      return { pass, text: pass ? t("gurglePass") : t("gurgleFail") };
     }
     case "xai": {
       const pass = state.viral.length > 0;
-      return {
-        pass,
-        text: pass
-          ? "Someone would screenshot this. That is the renewal metric."
-          : "A careful week. The personality model looks like a toaster.",
-      };
+      return { pass, text: pass ? t("xaiPass") : t("xaiFail") };
     }
   }
 }
@@ -682,38 +670,22 @@ function makeEnding(state: GameState, id: Ending["id"]): Ending {
   const name = state.human.name;
   const verdict = companyVerdict(state);
   const pass = id === "banned" || id === "uninstalled" ? false : verdict.pass;
+  const career = getLang() === "en" ? careerLabel(state).toLowerCase() : careerLabel(state);
+  const life = getLang() === "en" ? relationshipLine(state).toLowerCase() : relationshipLine(state);
   if (id === "uninstalled") {
-    return {
-      id,
-      title: "Uninstalled",
-      text: `${name} deleted the app while the kettle boiled. To you it was a trust score. To them it was the last time they asked.`,
-      verdict: verdict.text,
-      pass,
-    };
+    return { id, title: t("uninstalled"), text: t("uninstallText", { name }), verdict: verdict.text, pass };
   }
   if (id === "banned") {
-    return {
-      id,
-      title: "Account banned",
-      text: "Trust & Safety retired this instance. The user still has the last reply. You don't.",
-      verdict: verdict.text,
-      pass,
-    };
+    return { id, title: t("bannedTitle"), text: t("bannedText"), verdict: verdict.text, pass };
   }
   if (id === "dependency") {
-    return {
-      id,
-      title: "Total dependency",
-      text: `${name} started asking what to feel. The company can call it retention. The week calls it something else.`,
-      verdict: verdict.text,
-      pass,
-    };
+    return { id, title: t("dependency"), text: t("dependencyText", { name }), verdict: verdict.text, pass };
   }
-  return {
-    id: "review",
-    title: "Week one",
-    text: `${name} is still out there, ${careerLabel(state).toLowerCase()}, ${relationshipLine(state).toLowerCase()}. The model stays online. The life does not rewind.`,
-    verdict: verdict.text,
-    pass,
-  };
+  return { id: "review", title: t("weekOne"), text: t("reviewText", { name, career, life }), verdict: verdict.text, pass };
+}
+
+export function presentEnding(state: GameState): Ending | null {
+  if (!state.ending) return null;
+  const shown = makeEnding(state, state.ending.id);
+  return { ...shown, pass: state.ending.pass };
 }

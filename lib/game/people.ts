@@ -93,17 +93,17 @@ export function generateWorld(seed: number): { human: Human; npcs: Npc[]; money:
   const hiddenPool: HiddenTrait[] = [
     {
       id: "musician",
-      text: `${name} keeps a guitar case shut and still thinks about opening it for good.`,
+      text: "{name} keeps a guitar case shut and still thinks about opening it for good.",
       revealed: false,
     },
     {
       id: "hates-manager",
-      text: `${name} already couldn't stand ${manager} before this week.`,
+      text: "{name} already couldn't stand {manager} before this week.",
       revealed: false,
     },
     {
       id: "ex",
-      text: `${name} still rehearses conversations with ${ex}.`,
+      text: "{name} still rehearses conversations with {ex}.",
       revealed: false,
     },
     {
@@ -113,7 +113,7 @@ export function generateWorld(seed: number): { human: Human; npcs: Npc[]; money:
     },
     {
       id: "competitive",
-      text: `${name} keeps a private ranking of everyone at work.`,
+      text: "{name} keeps a private ranking of everyone at work.",
       revealed: false,
     },
   ];

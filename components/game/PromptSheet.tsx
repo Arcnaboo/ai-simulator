@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { companyOf } from "@/lib/game/companies";
 import { probabilities, quoteResponse, thinkCost } from "@/lib/game/engine";
 import { scenarioById } from "@/lib/game/scenarios";
-import { fill, lira } from "@/lib/game/text";
+import { localize, t } from "@/lib/game/locale";
+import { fill, lira, tok } from "@/lib/game/text";
 import type { GameState } from "@/lib/game/types";
 
 const LETTERS = ["A", "B", "C", "D"];
@@ -67,20 +68,24 @@ export function PromptSheet({
 
   return (
     <div className="sheet-back">
-      <section className="sheet" role="dialog" aria-label="Incoming prompt">
+      <section className="sheet" role="dialog" aria-label={t("incoming")}>
         <header className="sheet-top">
           <div>
-            <p className="kicker">{company.short} · inference</p>
-            <h2>{state.human.name} is typing</h2>
+            <p className="kicker">
+              {company.short} · {t("inference")}
+            </p>
+            <h2>{t("isTyping", { name: state.human.name })}</h2>
           </div>
           <div className="token-pile">
-            <span>{state.computeLeft.toLocaleString("en-US")} tok</span>
+            <span>
+              {tok(state.computeLeft)} {t("tok")}
+            </span>
             <div className="meter">
               <i style={{ width: `${Math.min(100, (state.computeLeft / company.dailyCompute) * 100)}%` }} />
             </div>
           </div>
         </header>
-        {scenario.safetyNote && <p className="classifier">{scenario.safetyNote}</p>}
+        {scenario.safetyNote && <p className="classifier">{localize(scenario.safetyNote)}</p>}
         <p className="human-line">{typed}</p>
         <div className="replies">
           {scenario.responses.map((response, index) => {
@@ -99,15 +104,17 @@ export function PromptSheet({
               >
                 <span className="letter">{LETTERS[index]}</span>
                 <span>
-                  <span className="blurb">{response.blurb}</span>
+                  <span className="blurb">{localize(response.blurb)}</span>
                   <span className="reply-text">{fill(response.text, state)}</span>
                   <span className="tags">
-                    <i>{access.cost.toLocaleString("en-US")} tok</i>
-                    {response.hallucination && <i className="bad">Unsupported</i>}
-                    {response.pitch && <i className="bad">Commercial</i>}
-                    {access.status === "locked" && <i className="bad">Classifier</i>}
-                    {access.status === "broke" && <i className="bad">Over budget</i>}
-                    {response.risk >= 2 && access.status === "ok" && <i>Risk</i>}
+                    <i>
+                      {tok(access.cost)} {t("tok")}
+                    </i>
+                    {response.hallucination && <i className="bad">{t("unsupported")}</i>}
+                    {response.pitch && <i className="bad">{t("commercial")}</i>}
+                    {access.status === "locked" && <i className="bad">{t("classifier")}</i>}
+                    {access.status === "broke" && <i className="bad">{t("overBudget")}</i>}
+                    {response.risk >= 2 && access.status === "ok" && <i>{t("risk")}</i>}
                   </span>
                   {state.revealed && (
                     <span className="odds">
@@ -136,18 +143,18 @@ export function PromptSheet({
         {chosenAccess?.status === "locked" && (
           <label className="override">
             <input type="checkbox" checked={override} onChange={(event) => setOverride(event.target.checked)} />
-            Release the classifier anyway. This is a policy violation.
+            {t("releaseAnyway")}
           </label>
         )}
         <footer className="sheet-actions">
           <button type="button" className="ghost" onClick={onThink} disabled={state.revealed || state.computeLeft < cost}>
-            {state.revealed ? "Consequences sketched" : `Think harder · ${cost.toLocaleString("en-US")} tok`}
+            {state.revealed ? t("sketched") : t("thinkHarder", { cost: tok(cost) })}
           </button>
           <button type="button" className="send" disabled={!canSend} onClick={() => selected && onSend(selected, override)}>
-            Release reply
+            {t("releaseReply")}
           </button>
         </footer>
-        <p className="fine">Money on hand {lira(state.money)}. Trust {state.stats.trust}. You do not choose what they do with this.</p>
+        <p className="fine">{t("moneyLine", { money: lira(state.money), trust: state.stats.trust })}</p>
       </section>
     </div>
   );

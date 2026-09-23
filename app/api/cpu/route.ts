@@ -10,12 +10,21 @@ Rules:
 - Return JSON only: {"choiceId":"...","monologue":"..."}`;
 
 interface Brief {
+  language?: string;
   human?: string;
   situation?: string;
   advice?: string | null;
   memories?: string[];
   recent?: string[];
   options?: { id?: string; label?: string }[];
+}
+
+function systemFor(language: string): string {
+  const line =
+    language === "tr"
+      ? "Monologue language: Turkish. Informal speech from İstanbul. First person. One or two short sentences. No quotation marks."
+      : "Monologue language: English. First person. One or two short sentences. No quotation marks.";
+  return `${SYSTEM}\n- ${line}`;
 }
 
 export async function GET() {
@@ -46,7 +55,9 @@ export async function POST(request: Request) {
   if (!key) return Response.json({ error: "no_key" }, { status: 401 });
 
   const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
+  const language = brief.language === "tr" ? "tr" : "en";
   const user = JSON.stringify({
+    language,
     human: String(brief.human ?? "").slice(0, 1200),
     situation: String(brief.situation ?? "").slice(0, 2000),
     advice: brief.advice ? String(brief.advice).slice(0, 1200) : null,
@@ -61,7 +72,7 @@ export async function POST(request: Request) {
     { max_tokens: 220 },
     { max_completion_tokens: 220 },
   ]) {
-    upstream = await complete(key, model, user, extra);
+    upstream = await complete(key, model, user, extra, language);
     if (upstream.ok || upstream.status === 401) break;
   }
   if (!upstream?.ok) {
@@ -83,11 +94,12 @@ async function complete(
   model: string,
   user: string,
   extra: Record<string, unknown>,
+  language: string,
 ): Promise<Response> {
   const body: Record<string, unknown> = {
     model,
     messages: [
-      { role: "system", content: SYSTEM },
+      { role: "system", content: systemFor(language) },
       { role: "user", content: user },
     ],
     response_format: { type: "json_object" },

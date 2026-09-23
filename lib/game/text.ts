@@ -1,3 +1,4 @@
+import { getLang, localize } from "./locale";
 import type { ChoiceOption, GameState } from "./types";
 
 export function clamp(n: number, min = 0, max = 100): number {
@@ -9,23 +10,28 @@ export function lira(n: number): string {
   return `${sign}${new Intl.NumberFormat("tr-TR").format(Math.abs(Math.round(n)))} ₺`;
 }
 
+export function tok(n: number): string {
+  return Math.round(n).toLocaleString(getLang() === "tr" ? "tr-TR" : "en-US");
+}
+
 export function fill(template: string, state: GameState): string {
+  const spoken = localize(template);
   const npc = Object.fromEntries(state.npcs.map((n) => [n.id, n.name]));
   const dict: Record<string, string> = {
     name: state.human.name,
-    job: state.human.job,
+    job: localize(state.human.job),
     pet: state.human.pet,
     city: state.human.city,
     district: state.human.district,
     money: lira(state.money),
-    manager: String(npc.manager ?? "the manager"),
-    crush: String(npc.crush ?? "a coworker"),
-    ex: String(npc.ex ?? "the ex"),
-    mother: String(npc.mother ?? "Mum"),
-    brother: String(npc.brother ?? "my brother"),
-    friend: String(npc.friend ?? "a friend"),
+    manager: String(npc.manager ?? localize("the manager")),
+    crush: String(npc.crush ?? localize("a coworker")),
+    ex: String(npc.ex ?? localize("the ex")),
+    mother: String(npc.mother ?? localize("Mum")),
+    brother: String(npc.brother ?? localize("my brother")),
+    friend: String(npc.friend ?? localize("a friend")),
   };
-  return template.replace(/\{(\w+)\}/g, (match, key: string) => dict[key] ?? match);
+  return spoken.replace(/\{(\w+)\}/g, (match, key: string) => dict[key] ?? match);
 }
 
 export function hydrateOption(option: ChoiceOption, state: GameState): ChoiceOption {
